@@ -1,0 +1,76 @@
+.grad-slam.grad-slam-schedule-display-view-mode {
+    padding-bottom: 72px;
+}
+
+.grad-slam.grad-slam-schedule-display-view-mode .paragraph--type--blade:first-child {
+    padding-top: 72px !important;
+}
+
+.field--name-field-grad-slam-schedule .forum-forms {
+    padding-bottom: 0px !important;
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+ .grad-slam-schedule-event.teaser a .gradslam-event-title h2,
+ .grad-slam-schedule-event.teaser .gradslam-event-order a {
+    color: #003660 !important;
+ }
+
+.grad-slam-schedule-event.teaser {
+    background-color: #eef0f2;
+}
+
+.grad-slam-schedule-event.teaser .gradslam-event-order {
+    position: absolute;
+    padding: 45px 5px 20px 35px;
+    font-size: 2.5em;
+    font-family: produkt;
+    font-weight: bold;
+    z-index: 2;
+}
+
+.grad-slam-schedule-event.teaser .gradslam-event-order a {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+.grad-slam-schedule-event.teaser .gradslam-event-content {
+    padding: 10px 30px 45px 80px;
+}
+
+.grad-slam-schedule-event.teaser .gradslam-event-content .gradslam-event-details span {
+    line-height: 2.7rem;
+}
+
+.grad-slam-schedule-event.teaser .gradslam-event-content .gradslam-date {
+    font-size: 1.2em;
+}
+
+.grad-slam-schedule-event.teaser .gradslam-event-content .gradslam-location {
+    font-family: Avenir, "Century Gothic", sans-serif;
+    font-weight: 600;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+}
+
+.grad-slam-schedule-event.teaser .gradslam-event-content .gradslam-event-departments ul {
+    list-style-type: none;
+}
+
+.grad-slam-schedule-event.teaser .gradslam-event-title h2 a {
+    margin-top: 10px;
+    /* color: #003660 !important; */
+    text-decoration: none;
+    border-bottom: none;
+}
+
+.grad-slam-schedule-event.teaser .location-thumbnail-holder {
+    /* aspect-ratio: 3/2; */
+    min-height: 250px;
+    width: 100%;
+    height: 100%;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+}

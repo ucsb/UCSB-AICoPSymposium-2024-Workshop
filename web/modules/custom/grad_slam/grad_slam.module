@@ -1,0 +1,688 @@
+<?php
+
+/**
+ * @file
+ * Contains grad_slam.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\path_alias\Entity\PathAlias;
+use Drupal\Core\Form\FormState;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\views\ViewExecutable;
+use Drupal\taxonomy\Entity\Term;
+
+use Drupal\Core\Link;
+use Drupal\Core\Breadcrumb\Breadcrumb;
+use Drupal\Core\Url;
+
+
+/**
+ * Implements hook_help().
+ */
+function grad_slam_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the grad_slam module.
+    case 'help.page.grad_slam':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Module created to enhance the functionality on the Grad Slam website.') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+
+
+/**
+ * Implements hook_preprocess().
+ */
+function grad_slam_preprocess(&$variables, $hook) {
+  $module_relative_url = \Drupal::service('extension.list.module')->getPath('grad_slam') . '/images/ucsb-logo.png';
+  $module_absolute_url = \Drupal::service('file_url_generator')->generateAbsoluteString($module_relative_url);
+  $variables['grad_slam_img_path'] = $module_absolute_url;
+}
+
+
+/**
+ * Implements hook_entity_presave().
+ */
+function grad_slam_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
+  switch ($entity->bundle()) {
+
+    // Here you modify only your day content type
+    case 'grad_slam_attendee':
+      // Setting the title with the value of field_date.
+      $first_name = ($entity->get('field_attendee_first_name')->value) ? $entity->get('field_attendee_first_name')->value . ' ' : '';
+      $middle_name = ($entity->get('field_attendee_middle_name')->value) ? $entity->get('field_attendee_middle_name')->value . ' ' : '';
+      $last_name = ($entity->get('field_attendee_last_name')->value) ? $entity->get('field_attendee_last_name')->value . ' ' : '';
+      $entity->setTitle(trim($first_name . $middle_name . $last_name));
+     break;
+
+    //Set the Schedule Event title with the selected topic title
+    case 'grad_slam_schedule_event':
+      $topic_title = $entity->get('field_grad_slam_departments')->referencedEntities()[0]->name->value;
+      $entity->setTitle($topic_title);
+      break;
+
+     //Invalidate cache tags for the grad slam events so their ordergets updated.
+    case 'grad_slam':
+      $events = array_column($entity->field_grad_slam_schedule->getValue(),'target_id');
+      if($events) {
+        $events_cache_tags = array_map(function($o) { return "node:$o";}, $events);
+        \Drupal\Core\Cache\Cache::invalidateTags($events_cache_tags);
+      }
+
+    break;
+
+  }
+}
+
+
+/**
+ * Implements hook_entity_insert().
+ */
+function grad_slam_entity_insert(Drupal\Core\Entity\EntityInterface $entity) {
+  switch ($entity->bundle()) {
+
+    //Adopt the URL alias path from the parent Grad Slam node
+    case 'grad_slam_schedule_event':
+      update_grad_slam_event_url($entity);
+
+    break;
+    
+    case 'grad_slam':
+      update_grad_slam_participant_url($entity);
+
+    break;
+  }
+}
+
+/**
+ * Implements hook_entity_update().
+ */
+function grad_slam_entity_update(Drupal\Core\Entity\EntityInterface $entity) {
+  switch ($entity->bundle()) {
+
+    //Adopt the URL alias path from the parent Grad Slam node
+    case 'grad_slam_schedule_event':
+      update_grad_slam_event_url($entity);
+
+    break;
+    
+    //Update the URL alias path for Grad Slam participants 
+    case 'grad_slam':
+      update_grad_slam_participant_url($entity);
+
+    break;
+  }
+}
+
+function update_grad_slam_participant_url($entity) {
+  $original = $entity->original->field_grad_slam_past_showcase->value;
+  $is_past_showcase = $entity->field_grad_slam_past_showcase->value;
+
+  $grad_slam_participants = $entity->field_grad_slam_attendee->referencedEntities();
+  $grad_slam_alias = \Drupal::service('path_alias.manager')->getAliasByPath('/node/'. $entity->id());
+
+  // $links = \MenuLinkManager::loadLinksByRoute($grad_slam_alias,[],'main');
+  // $link = 'entity:node/' . $entity->id();
+  // $menu_link = \Drupal::entityTypeManager()->getStorage('menu_link_content')->loadByProperties(['link.uri' => $link]);
+
+  if($original != $is_past_showcase){
+    //If it becomes a past showcase set the default URL to follow the final round locaton
+    if ($is_past_showcase) {
+      $grad_slam_year = $entity->field_grad_slam_year->referencedEntities()[0]->name->value;
+      $grad_slam_alias = '/past-showcases/' . $grad_slam_year . '/final-round';
+    } 
+    
+    foreach($grad_slam_participants as $participant) {
+      $pathTitle = \Drupal::service('pathauto.alias_cleaner')->cleanString($participant->label());
+      
+      $path_alias = PathAlias::create([
+        'path' => '/node/' . $participant->id(),
+        'alias' => $grad_slam_alias . '/' . $pathTitle,
+      ]);
+      $path_alias->save();
+    }
+  }
+
+}
+
+function update_grad_slam_event_url($entity){
+  // Convert to lowercase, trim spaces, replace spaces with underscore and then truncate to 60 chars.
+  $pathTitle = \Drupal::service('pathauto.alias_cleaner')->cleanString($entity->label());
+
+  $grad_slam_id = \Drupal::entityQuery('node')
+  ->condition('type', 'grad_slam')
+  ->condition('field_grad_slam_schedule.target_id', $entity->id(), '=')
+  ->accessCheck(FALSE)
+  ->execute();
+
+  if($grad_slam_id) {
+    $grad_slam_id = reset($grad_slam_id);
+  } else {
+    $grad_slam_id = \Drupal::routeMatch()->getParameter('node')->id();
+  }
+
+  $grad_slam_alias = \Drupal::service('path_alias.manager')->getAliasByPath('/node/'.$grad_slam_id);
+  $path_alias = PathAlias::create([
+    'path' => '/node/' . $entity->id(),
+    'alias' => $grad_slam_alias . "/schedule/" . $pathTitle,
+  ]);
+  $path_alias->save();
+}
+
+
+/**
+ * Implements hook_preprocess_node().
+ */
+function grad_slam_preprocess_node(&$variables)
+{
+
+  $node = $variables['node'];
+  $node_type = $node->getType();
+
+  if ($node_type == 'grad_slam') {
+
+    // Overwrite the fields names to field_blades so they adopt the blades styling from the theme
+    $variables['content']['field_grad_slam_about']['#field_name'] = 'field_blades';
+    $variables['content']['field_grad_slam_info']['#field_name'] = 'field_blades';
+    $variables['content']['field_grad_slam_workshops']['#field_name'] = 'field_blades';
+    $variables['content']['field_prizes_and_sponsors']['#field_name'] = 'field_blades';
+    $variables['content']['field_grad_slam_final_event']['#field_name'] = 'field_blades';
+    $variables['content']['field_grad_slam_final_round']['#field_name'] = 'field_blades';
+    $variables['content']['field_grad_slam_summary']['#field_name'] = 'field_blades';
+
+    //Set the page to tru to avoid having h2 tags rendered
+    $variables['page'] = true;
+  }
+
+
+  if ($node_type == 'grad_slam_schedule_event') {
+    //get the list of departments from the topic id
+    $vid = 'grad_slam_department';
+    $topic_id = $node->field_grad_slam_departments->target_id;
+    $depth = 1;
+    $load_entities = FALSE;
+    $departments = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->loadTree($vid, $topic_id, $depth, $load_entities);
+    $variables['departments'] = array_column($departments, 'name');
+
+
+    // Get the parent Grad Slam node
+    $grad_slam_id = \Drupal::entityQuery('node')
+      ->condition('type', 'grad_slam')
+      ->condition('field_grad_slam_schedule.target_id', $node->id(), '=')
+      ->accessCheck(FALSE)
+      ->execute();
+
+
+    if($grad_slam_id) {
+
+      $year = 0;
+      $delta = 0;
+      $gradSlamNode = \Drupal\node\Entity\Node::load(reset($grad_slam_id));
+
+      //Get the order of the event in the Grad Slam node
+      $events = $gradSlamNode->field_grad_slam_schedule->getValue();
+      $found_key = array_search($node->id(), array_column($events, 'target_id')) + 1;
+      $variables['event_order'] = $found_key;
+
+      //Get the year id from the parent Grad Slam node
+      $year = $gradSlamNode->field_grad_slam_year->target_id;
+      $variables['event_year'] = $year;
+
+    }
+
+  }
+
+  if($node_type == 'grad_slam_attendee') {
+    
+    // Get the parent Grad Slam node
+    $grad_slam_id = \Drupal::entityQuery('node')
+      ->condition('type', 'grad_slam')
+      ->condition('field_grad_slam_attendee.target_id', $node->id(), '=')
+      ->accessCheck(FALSE)
+      ->execute();
+
+    if($grad_slam_id) {
+
+      $year = 0;
+      $delta = 0;
+      $gradSlamNode = \Drupal\node\Entity\Node::load(reset($grad_slam_id));
+
+      //Get the year id from the parent Grad Slam node
+      $year = $gradSlamNode->field_grad_slam_year->referencedEntities()[0];
+      $variables['grad_slam_year'] = $year->name->value;
+
+    }
+  }
+
+}
+
+/**
+ * Implements hook_preprocess_paragraph().
+ */
+function grad_slam_preprocess_paragraph(&$variables) {
+  $is_admin = \Drupal::service('router.admin_context')->isAdminRoute();
+  $variables['is_admin_route'] = $is_admin;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function grad_slam_theme($existing, $type, $theme, $path) {
+  return [
+    'block__grad_slam_title_block' => [
+      'template' => 'block--grad-slam-title-block',
+      'base hook' => 'block',
+      'variables' => [
+        'content' => NULL,
+      ],
+      'render element' => 'children',
+    ],
+    'node__grad_slam_schedule_event__teaser' => [
+      'template' => 'node--grad-slam-schedule-event--teaser',
+      'base hook' => 'node',
+    ],
+    'node__grad_slam_schedule_event__full' => [
+      'template' => 'node--grad-slam-schedule-event--full',
+      'base hook' => 'node',
+    ],
+    'node__grad_slam_attendee__full' => [
+      'template' => 'node--grad-slam-attendee--full',
+      'base hook' => 'node',
+    ],
+    'node__grad_slam_attendee__teaser' => [
+      'template' => 'node--grad-slam-attendee--teaser',
+      'base hook' => 'node',
+    ],
+  ];
+}
+
+/**
+* Implements hook_views_pre_render().
+*/
+function grad_slam_views_pre_render(ViewExecutable $view) {
+  
+  if (isset($view) && (($view->storage->id() == 'grad_slam_attendees') && ($view->current_display == 'block_gradslam_event_finalists')) || (($view->storage->id() == 'grad_slam_final_round_attendees') && ($view->current_display == 'block_gradslam_event_finalists'))) {
+    $is_admin = \Drupal::service('router.admin_context')->isAdminRoute();
+    if(!$is_admin){
+      $view->element['#attached']['library'][] = 'grad_slam/finalists-teaser-styling';
+    } else {
+      $view->element['#attached']['library'][] = 'grad_slam/finalists-teaser-styling-admin';
+
+    }
+  }
+
+  if (isset($view) && ($view->storage->id() == 'grad_slam_year_attendees')) {
+    $view->element['#attached']['library'][] = 'grad_slam/full-view-styling';
+
+    //Manually Set the view title to correspond to the argument sent 
+    if(($view->current_display == 'page_grad_slam_pastshowcases') || ($view->current_display == 'page_grad_slam_pastshowcases_final_round')) {
+      // $year = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->load($view->args[0]);
+      $year = $view->args[0];
+      $title = $year;
+      if($view->current_display == 'page_grad_slam_pastshowcases_final_round'){
+        $title = $year . ' Final Round';
+      }
+
+      $view->setTitle($title);
+      $route = \Drupal::routeMatch()->getCurrentRouteMatch()->getRouteObject();
+      $route->setDefault('_title_callback', function() use ($title) {
+        return $title;
+      });
+    }
+  }
+}
+
+
+function grad_slam_preprocess_page_title(&$variables) {
+  $nid = \Drupal::routeMatch()->getRawParameter('node');
+  if ($nid) {
+    $node = \Drupal\node\Entity\Node::load($nid);
+    $node_type = $node->getType();
+      if ($node_type == 'grad_slam' || $node_type == 'grad_slam_attendee') {
+        $variables['hidetitle'] = true;
+      }
+  }
+}
+
+/**
+ * Implements hook_system_breadcrumb_alter().
+ *
+ *
+ * @param \Drupal\Core\Breadcrumb\Breadcrumb $breadcrumb
+ * @param \Drupal\Core\Routing\RouteMatchInterface $route_match
+ * @param array $context
+ */
+function grad_slam_system_breadcrumb_alter(Breadcrumb &$breadcrumb, RouteMatchInterface $route_match, array $context) {
+  
+  if ($breadcrumb) {
+    $dashboard_add_routes = [
+      'view.grad_slam_year_attendees.page_grad_slam_pastshowcases_final_round',
+      'entity.node.canonical',
+    ];
+    $route_name = $route_match->getRouteName();
+
+    // attach dashboard to breadcrumb for student letters
+    if (in_array($route_name, $dashboard_add_routes)) {
+
+      // If this is /Final-round page
+      if ($route_name == 'view.grad_slam_year_attendees.page_grad_slam_pastshowcases_final_round') {
+
+        $route = $route_match->getRouteObject();
+        $year = $route_match->getParameter('year');
+
+        $links = $breadcrumb->getLinks();
+        if (!empty($links)) {
+          //Take out the Final Round part of the route
+          $final_round_link = array_pop($links);
+
+          //Create the Year breadcrumb link
+          $year_link = Link::createFromRoute($year, 'view.grad_slam_year_attendees.page_grad_slam_pastshowcases',['year' => $year]);
+          
+          //Add the year/final-round links
+          array_push($links, $year_link, $final_round_link);
+
+          //Get the cachable dependency 
+          $cacheability = \Drupal\Core\Cache\CacheableMetadata::createFromObject($breadcrumb);
+
+          //Recreate the breadcrumbs
+          $breadcrumb = new Breadcrumb();
+          $breadcrumb->setLinks($links);
+          $breadcrumb->addCacheableDependency($cacheability);
+          $breadcrumb->addCacheContexts(['route']);
+        }
+      }
+
+      //If this is a node route
+      if($route_name == 'entity.node.canonical') {
+
+        $route = $route_match->getRouteObject();
+        $node = $route_match->getParameter('node');
+
+        //If the node is a Grad Slam Participant type
+        if($node->bundle() == 'grad_slam_attendee') {
+          
+          $grad_slam_id = \Drupal::entityQuery('node')
+            ->condition('type', 'grad_slam')
+            ->condition('field_grad_slam_attendee.target_id', $node->id(), '=')
+            ->accessCheck(FALSE)
+            ->execute();
+
+          //If the participant is part of a Grad Slam competition
+          if($grad_slam_id) {
+
+            //Get the parent Grad Slam node
+            $gradSlamNode = \Drupal\node\Entity\Node::load(reset($grad_slam_id));
+            //Get the year from the parent Grad Slam node
+            $year = $gradSlamNode->field_grad_slam_year->referencedEntities()[0]->name->value;
+            
+            //If the Grad Slam is archived
+            if($gradSlamNode->field_grad_slam_past_showcase->value){
+
+              $links = $breadcrumb->getLinks();
+              if (!empty($links)) {
+                //Take out the Persons part of the route
+                $node_link = array_pop($links);
+
+                //Create the Year breadcrumb link
+                $year_link = Link::createFromRoute($year, 'view.grad_slam_year_attendees.page_grad_slam_pastshowcases',['year' => $year]);
+
+                //Create the Final Round breadcrumb link
+                $final_round_link = Link::createFromRoute($year . ' Final Round', 'view.grad_slam_year_attendees.page_grad_slam_pastshowcases_final_round',['year' => $year]);
+                
+                //Add the year/final-round/person parts of the breadcrumbs
+                array_push($links, $year_link, $final_round_link, $node_link);
+
+                //Get the cachable dependency 
+                $cacheability = \Drupal\Core\Cache\CacheableMetadata::createFromObject($breadcrumb);
+
+                //Recreate the breadcrumbs
+                $breadcrumb = new Breadcrumb();
+                $breadcrumb->setLinks($links);
+                $breadcrumb->addCacheableDependency($cacheability);
+                $breadcrumb->addCacheContexts(['route']);
+              }
+
+            } else {
+              //If the Grad Slam is still active only add the final round page link and the persons name
+              $links = $breadcrumb->getLinks();
+              if (!empty($links)) {
+                
+                //Create the Node breadcrumb link
+                $node_link = Link::createFromRoute($node->title->value, '<none>');
+                
+                //Add the year/person parts of the breadcrumbs
+                array_push($links, $node_link);
+
+                //Get the cachable dependency 
+                $cacheability = \Drupal\Core\Cache\CacheableMetadata::createFromObject($breadcrumb);
+
+                //Recreate the breadcrumbs
+                $breadcrumb = new Breadcrumb();
+                $breadcrumb->setLinks($links);
+                $breadcrumb->addCacheableDependency($cacheability);
+                $breadcrumb->addCacheContexts(['route']);
+                
+              }
+            }
+          }
+          
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_preprocess_breadcrumb().
+ */
+function grad_slam_preprocess_breadcrumb(&$variables) {
+  $nid = \Drupal::routeMatch()->getRawParameter('node');
+  if ($nid) {
+    $node = \Drupal\node\Entity\Node::load($nid);
+    $node_type = $node->getType();
+    if ($node_type == 'grad_slam') {
+      $variables['hidetitle'] = true;
+    }
+  }
+}
+
+
+/**
+ * implements hook_form_alter().
+ */
+function grad_slam_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+  if($form_id == 'node_grad_slam_attendee_form' || $form_id == 'node_grad_slam_attendee_edit_form') {
+    attach_attendee_form_attributes($form, $form_state);
+  }
+  if($form_id == 'node_grad_slam_schedule_event_form' || $form_id == 'node_grad_slam_schedule_event_edit_form') {
+    hide_grad_slam_schedule_event_title($form, $form_state);
+  }
+}
+
+
+/**
+ * implements hook_inline_entity_form_entity_form_alter().
+ */
+function grad_slam_inline_entity_form_entity_form_alter(&$entity_form, &$form_state) {
+  if ($entity_form['#entity_type'] == 'node' && $entity_form['#bundle'] == 'grad_slam_attendee') {
+    attach_attendee_form_attributes($entity_form, $form_state);
+  }
+  if ($entity_form['#entity_type'] == 'node' && $entity_form['#bundle'] == 'grad_slam_schedule_event') {
+    hide_grad_slam_schedule_event_title($entity_form, $form_state);
+  }
+
+}
+
+function hide_grad_slam_schedule_event_title(&$form, &$form_state){
+  
+  $form['#attributes']['class'][] = 'grad_slam_event_form';
+  $form['title']['#attributes']['class'][]='grad_slam_event_title';
+  $form['field_grad_slam_departments']['#attributes']['class'][] = 'grad_slam_event_topic';
+  $form['#attached']['library'][] = 'grad_slam/attendee-form-styling';
+}
+
+//Add the grad_slam_attendee_form class attribute
+//This is used in the attached js library
+function attach_attendee_form_attributes(&$form, &$form_state) {
+  $current_user = \Drupal::currentUser();
+  $roles = $current_user->getRoles();
+
+  // Get participant radio buttons name attribute
+  $participant_form_widget_parents = $form['field_attendee_participant']['widget']['#parents'];
+  $participant_control_name = array_shift($participant_form_widget_parents);
+  if($participant_form_widget_parents){
+    $participant_control_name .= "[" . implode("][", $participant_form_widget_parents) . "]";
+  }
+
+  // Show the Title & Affiliation and Judging Topic fields when the Judge option is checked
+  $form['field_attendee_title']['#states'] = [
+    'visible' => [
+    ':input[name="' .$participant_control_name . '"]' => ['value' => '0']
+    ]
+  ];
+  $form['field_attendee_final_round_judge']['#states'] = [
+    'visible' => [
+    ':input[name="' .$participant_control_name . '"]' => ['value' => '0']
+    ]
+  ];
+  $form['field_attendee_judging_topic']['#states'] = [
+    'visible' => [
+        ':input[name="' .$participant_control_name . '"]' => ['value' => '0']
+    ]
+  ];
+
+  // Show the Department & Talk fields when the Participant option is checked
+  $form['field_attendee_department']['#states'] = [
+    'visible' => [
+    ':input[name="' .$participant_control_name . '"]' => ['value' => '1']
+    ]
+  ];
+  $form['field_attendee_talk']['#states'] = [
+    'visible' => [
+    ':input[name="' .$participant_control_name . '"]' => ['value' => '1']
+    ]
+  ];
+
+  //Show Attendee Achievements options when the Participant option is checked
+  $form['field_attendee_prelim_runner_up']['#states'] = [
+    'visible' => [':input[name="' .$participant_control_name . '"]' => ['value' => '1']]
+  ];
+  $form['field_attendee_semi_finalist']['#states'] = [
+    'visible' => [':input[name="' .$participant_control_name . '"]' => ['value' => '1']]
+  ];
+  $form['field_attendee_finalist']['#states'] = [
+    'visible' => [':input[name="' .$participant_control_name . '"]' => ['value' => '1']]
+  ];
+  $form['field_attendee_runner_up']['#states'] = [
+    'visible' => [':input[name="' .$participant_control_name . '"]' => ['value' => '1']]
+  ];
+  $form['field_attendee_peoples_choice']['#states'] = [
+    'visible' => [':input[name="' .$participant_control_name . '"]' => ['value' => '1']]
+  ];
+  // $form['field_attendee_judge_choice']['#states'] = [
+  //   'visible' => [':input[name="' .$participant_control_name . '"]' => ['value' => '1']]
+  // ];
+  $form['field_attendee_champion']['#states'] = [
+    'visible' => [':input[name="' .$participant_control_name . '"]' => ['value' => '1']]
+  ];
+  
+  $form['#attributes']['class'][] = 'grad_slam_attendee_form';
+  $form['title']['#attributes']['class'][]='grad_slam_attendee_full_name';
+  $form['field_attendee_first_name']['#attributes']['class'][] = 'grad_slam_attendee_first_name';
+  $form['field_attendee_middle_name']['#attributes']['class'][] = 'grad_slam_attendee_middle_name';
+  $form['field_attendee_last_name']['#attributes']['class'][] = 'grad_slam_attendee_last_name';
+
+  $form['#attached']['library'][] = 'grad_slam/attendee-form-styling';
+}
+
+/**
+ * implements hook_field_group_form_process()
+ */
+function grad_slam_field_group_form_process(array &$element, &$group, &$form) {
+
+  if($form['#type'] == 'form' && ($form['#form_id'] == 'node_grad_slam_form' || $form['#form_id'] == 'node_grad_slam_edit_form')){
+    $var = 1;
+  }
+
+  if((array_key_exists('#bundle',$form) && $form['#bundle'] == 'grad_slam_attendee') || ($form['#form_id'] == 'node_grad_slam_attendee_edit_form' || $form['#form_id'] == 'node_grad_slam_attendee_form')){
+
+    //Show the Presenter Achievements group when Presenter is selected
+    if(array_key_exists('#title',$element) && $element['#title'] == "Presenter Achievements"){
+
+      $participant_form_widget_parents = $form['field_attendee_participant']['widget']['#parents'];
+      $participant_control_name = array_shift($participant_form_widget_parents);
+      if($participant_form_widget_parents){
+        $participant_control_name .= "[" . implode("][", $participant_form_widget_parents) . "]";
+      }
+
+      $element['#states'] = [
+        'visible' => [
+          ':input[name="' .$participant_control_name . '"]' => ['value' => '1'],
+        ],
+      ];
+    }
+
+  }
+
+}
+
+
+
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function grad_slam_form_views_exposed_form_alter(&$form, FormStateInterface $form_state, $form_id)
+{
+  if (isset($form['#id']) && ($form['#id'] == 'views-exposed-form-grad-slam-year-attendees-block-gradslam-year-champion-dept')) {
+
+    $options = &drupal_static(__FUNCTION__);
+    if (is_null($options)) {
+
+      $cid = 'grad_slam:bulletin:year';
+      $data = \Drupal::cache()->get($cid);
+
+      if (!$data) {
+        $options = [];
+        // $options['all'] = new TranslatableMarkup('- All -');
+
+        //Manually filter out the oldest article
+        $database = \Drupal::database();
+        $query_str = "SELECT taxonomy_term_data.tid ";
+        $query_str .= "FROM taxonomy_term_data ";
+        $query_str .= "INNER JOIN taxonomy_term_field_data ON taxonomy_term_data.tid = taxonomy_term_field_data.tid ";
+        $query_str .= "WHERE taxonomy_term_data.vid = 'grad_slam_year'";
+        $query_str .= "ORDER BY name DESC ";
+        $query_str .= "LIMIT 1 ";
+        $db_query = $database->query($query_str);
+        $result = $db_query->fetchAll();
+
+        if ($result) {
+
+          $last_year_id = reset($result)->tid;
+          // $last_year = Taxonomy::load($last_year_id);
+
+          unset($form['year_id']['#options']['All']);
+          $form['year_id']['#default_value'] = $last_year_id;
+          // $form_state['input'] = ['field_grad_slam_year_target_id' => $last_year_id];
+         
+        }
+
+        $cache_tags = ['grad_slam:bulletin:year'];
+        // \Drupal::cache()->set($cid, $options, CacheBackendInterface::CACHE_PERMANENT, $cache_tags);
+      } else {
+        $options = $data->data;
+      }
+    }
+
+
+
+  }
+}
+

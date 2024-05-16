@@ -1,0 +1,6 @@
+@media (min-width: 768px) {
+    .user-logged-in .content-header.has-secondary-navigation {
+        margin-top: 3px !important;
+    }
+
+} 

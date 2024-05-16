@@ -1,0 +1,8 @@
+grad_slam.importparticipants:
+  path: '/import_presenters'
+  defaults:
+    _controller: '\Drupal\grad_slam\Controller\ProcessCsvController::importPresenters'
+    _title: 'Import Presenters'
+  requirements:
+    _permission: 'access content'
+    _role: 'administrator'

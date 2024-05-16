@@ -1,0 +1,219 @@
+.display-extra-small {
+    color: #111517;
+    font-family: Avenir, "Century Gothic", sans-serif;
+    font-weight: 500;
+    font-size: 1.7rem;
+    line-height: 1;
+}
+
+.display-extra-small.serif {
+    font-family: Produkt, serif;
+    font-weight: 300
+}
+
+.gradslam-participant{
+    padding-bottom:10px;
+}
+
+@media screen and (max-width: 800px) {
+    .grad-slam-schedule-event.full .event-content {
+        padding: 50px;
+    }
+}
+
+@media screen and (min-width: 801px) {
+    .grad-slam-schedule-event.full .event-content {
+        padding: 100px;
+    }
+}
+
+.gradslam-location {
+    font-family: Avenir, "Century Gothic", sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.grad-slam-schedule-event.full .view-grad-slam-attendees .view-content .row {
+    margin-right: 0px;
+    margin-left: 0px;
+}
+
+.event-details-row {
+    padding: 10px 0;
+    margin: 0px;
+}
+
+.event-details-row span {
+    vertical-align: middle;
+}
+
+
+.location-thumbnail-holder {
+    /* aspect-ratio: 3/2; */
+    min-height: 350px;
+    width: 100%;
+    height: 100%;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+}
+
+
+.squared-img img {
+    aspect-ratio: 1/1;
+    object-fit: cover;
+}
+
+.grad-slam-year-attendees-styles form.views-exposed-form {
+    width: 100% !important;
+    margin: 0px !important;
+    padding: 10px 0;
+}
+
+.grad-slam-year-attendees-styles .view-filters {
+     margin: 0 -15px;
+     background-color: #9CBEBE;
+ }
+
+ .grad-slam-year-attendees-styles .view-filters label {
+    text-transform: capitalize;
+    font-size: 1.3em;
+ }
+
+.grad-slam-year-attendees-styles .view-filters .forum-forms {
+     background-color: #9CBEBE;
+     padding-bottom: 30px;
+     padding-top: 30px
+ }
+
+
+.view-display-id-block_gradslam_year_champion_dept .view-content {
+    margin-left: -15px;
+    margin-right: -15px;
+    background-color: #eef0f2;
+
+}
+
+.view-display-id-block_gradslam_year_champion_dept .view-content .row {
+    box-sizing: border-box;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 1230px;
+    padding-left: 15px;
+    padding-right: 15px;
+
+}
+
+.grad-slam-year-attendees-styles .view-content {
+    border-top: #111517;
+    border-top-style: solid;
+    border-top-width: thin;
+}
+
+.grad-slam-year-attendees-styles .view-content .row h2:nth-child(2) {
+    padding-bottom: 30px;
+}
+
+.grad-slam-year-attendees-styles .view-content .row h2:nth-child(2) {
+    width: 100%;
+}
+.grad-slam-year-attendees-styles .view-content .row h3 {
+    /* padding-top:  */
+}
+
+.grad-slam-year-attendees-styles .view-content .row h4 {
+    
+}
+
+.grad-slam-year-attendees-styles .row {
+    margin-left: 0px;
+    margin-right: 0px;
+
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.grad-slam-year-attendees-styles .row .grad-slam-participant {
+    /* display:flex; */
+}
+
+.grad-slam-year-attendees-styles .view-empty {
+    box-sizing: border-box;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 1230px;
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+.grad-slam-presenter-title {
+    color: #003660;
+}
+
+
+.grad-slam-year-summary-styles, .grad-slam-year-final-round-styles {
+    margin-bottom:30px;
+}
+
+.grad-slam-years-grid-styles .btn {
+    width: 220px;
+}
+
+
+div:not(.field--name-field-view) .region-content>.views-element-container {
+    max-width: 100%!important;
+    width: 100%;
+}
+
+@media (min-width: 992px) {
+    div:not(.field--name-field-view) .region-content>.views-element-container {
+        padding-left: 15px!important;
+        padding-right: 15px!important;
+    }
+
+    .grad-slam-year-attendees-styles, .grad-slam-year-final-round-styles {
+        box-sizing: border-box;
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 1230px;
+        padding-left: 30px;
+        padding-right: 30px;
+    }
+    
+}
+
+ .grad-slam-year-final-round-styles { 
+    text-align: center;
+ }
+
+
+.field--name-field-blades .paragraph--type--blade > .inner {
+    box-sizing: border-box;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 1230px;
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+.squared-325 img, .squared-220 img {
+    object-position: top;
+}
+
+/* Grad Slam Attendee Full */
+.grad-slam-attendee.full p.display-medium {
+    margin-bottom: 0px;
+}
+
+.grad-slam-attendee.full h2 {
+    margin-top: 0px;
+}
+
+/* Finalists View Block */
+.view-grad-slam-year-attendees h3.grad-slam-presenter-title {
+    margin-bottom: 0px;
+
+}
+.view-grad-slam-year-attendees .views-field-field-attendee-department h4 {
+    margin: 0 0 15px 0;
+}

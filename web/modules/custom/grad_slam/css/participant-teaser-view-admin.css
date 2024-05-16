@@ -1,0 +1,10 @@
+.participantpanel-item {
+    padding-bottom: 10px;
+}
+.participantpanel_bg {
+    background: none !important;
+}
+.participantpanel_title {
+    font-size: 1.3em;
+    display: block;
+}

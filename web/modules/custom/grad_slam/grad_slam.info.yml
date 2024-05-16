@@ -1,0 +1,9 @@
+name: 'Grad Slam'
+type: module
+description: 'Module created to enhance the functionality on the Grad Slam website.'
+version: '1.0.0'
+core_version_requirement: ^9 || ^10
+libraries:
+  - grad_slam/main-styling
+  - grad_slam/attendee-form-styling
+package: 'ITS'

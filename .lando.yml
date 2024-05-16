@@ -1,0 +1,27 @@
+name: ucsbaicopsymposium2024
+recipe: drupal10
+config:
+  webroot: web
+  php: 8.1
+  drush: 12.1.15
+services:
+  appserver:
+    xdebug: debug
+    config:
+      php: .vscode/php.ini
+    build_as_root:
+      - chmod +x /app/extract-files.sh  # Make sure the script is executable
+      - /app/extract-files.sh  # Run your custom script
+      - chmod +x /app/vendor/drush/drush/drush
+    build:
+      - composer install  # Run composer install during build process
+  database:
+    type: mysql:5.7
+    portforward: true
+    build_as_root:
+      - chmod +x /app/import-db.sh  # Make sure the import script is executable
+      - /app/import-db.sh  # Run the import script
+tooling:
+  drush:
+    service: appserver
+    cmd: /app/vendor/drush/drush/drush  # Path to Drush executable within your project

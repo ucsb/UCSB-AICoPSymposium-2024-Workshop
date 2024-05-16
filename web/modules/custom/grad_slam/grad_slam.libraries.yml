@@ -1,0 +1,35 @@
+main-styling:
+  css:
+    theme:
+      css/main.css: {} 
+  js:
+    js/scripts.js: {}
+attendee-form-styling:
+  css:
+    theme:
+      css/attendee-form.css: {}
+  js:
+    js/attendee-form.js: {}
+teaser-view-styling:
+  css:
+    theme:
+      css/teaser-view.css: {}
+  js:
+    js/gradslam-schedules.js: {}
+full-view-styling:
+  css:
+    theme:
+      css/full-view.css: {}
+  js:
+    js/gradslam-schedules.js: {}
+finalists-teaser-styling:
+  css:
+    theme:
+      css/participant-teaser-view.css: {}
+  js:
+    js/participant-teaser-view.js: {}
+    js/gradslam-schedules.js: {}
+finalists-teaser-styling-admin:
+  css:
+    theme:
+      css/participant-teaser-view-admin.css: {}
